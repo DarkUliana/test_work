@@ -1,14 +1,14 @@
 <?php
 
 require_once DOC_ROOT . '/system/driver.php';
+require_once DOC_ROOT . '/app/helpers/insert_str_helper.php';
 
 class Main_Model
 {
     public $connection;
-    public $table = 'products';
-    public $product = 'product';
-    public $quantity = 'quantity';
-    public $warehouse = 'warehouse';
+    public $productsTable = 'products';
+    public $warehosesTable = 'warehouses';
+
 
     public function __construct()
     {
@@ -17,58 +17,17 @@ class Main_Model
 
     public function getData()
     {
-        $query = "SELECT $this->product, sum, GROUP_CONCAT($this->warehouse SEPARATOR ', ') as warehouses
-                  FROM
-                  (SELECT $this->product, SUM($this->quantity) AS sum, $this->warehouse
-                  FROM $this->table  
-                  GROUP BY $this->warehouse, $this->product) as prods
-                  WHERE sum > 0
-                  GROUP BY $this->product";
+        $query = "SELECT p.product, SUM(p.quantity) AS sum, GROUP_CONCAT(w.warehouse SEPARATOR ', ') AS wh
+                  FROM $this->productsTable as p
+                  LEFT JOIN $this->warehosesTable AS w ON p.warehouse_id = w.id 
+                  WHERE quantity > 0
+                  GROUP BY product";
         $result = $this->connection->run($query);
-        return $result;
-    }
 
-    public function uploadFile()
-    {
-        $file = CSV_ROOT . '/file_' . date('Ymd_His') . '.csv';
-        if (move_uploaded_file($_FILES['csv']['tmp_name'], $file)) {
-            return $file;
+        if ($result) {
+            return $result;
         }
-
-        return null;
-    }
-
-    public function parse($path)
-    {
-        $file = fopen($path, 'r');
-
-        $array = [];
-        $count = false;
-        while (($line = fgetcsv($file)) !== FALSE) {
-            if (!$count) {
-                $count = true;
-                continue;
-            }
-            if ($this->check($line))
-                $array[] = $line;
-        }
-        fclose($file);
-        @unlink($path);
-        return $array;
-    }
-
-
-    public function check($data)
-    {
-        if (!$data || count($data) < 2) {
-            return false;
-        }
-
-        foreach ($data as $one) {
-            if (!$one)
-                return false;
-        }
-        return true;
+        return [];
     }
 
     public function insertProducts($data)
@@ -77,23 +36,34 @@ class Main_Model
         if (!is_array($data)) {
             return 'Ошибка при разборе файла!';
         }
+        $helper = new Insert_Str_Helper();
 
-        $value = $this->valuesToStr($data);
-
-        $query = "INSERT INTO $this->table ($this->product, $this->quantity, $this->warehouse) " .
-                 "VALUES $value";
-
-        return $this->connection->run($query);
-    }
-
-    private function valuesToStr($data)
-    {
-        $value = '';
-        foreach ($data as $item) {
-            $value .= "('" . implode("','", $item) . "')" . ",";
+        $where = $helper->whereWarehousesStr($data, "warehouse");
+        $whId = $this->selectWarehouseIdByName($where);
+        $newData = $helper->changeWarehouseNameToId($data, $whId);
+//    var_dump($newData); die();
+        foreach ($newData as $value) {
+            $query = "UPDATE $this->productsTable 
+                      SET quantity = quantity+{$value['quantity']}
+                      WHERE product = '{$value['product']}' AND warehouse_id = {$value['warehouse_id']}";
+            $this->connection->run($query);
+//            var_dump($query); die();
         }
-        $value = substr($value, 0, -1);
-        return $value;
+
+        return 1;
     }
+
+    public function selectWarehouseIdByName($where)
+    {
+        $query = "SELECT * FROM warehouses $where";
+
+        $result = $this->connection->run($query);
+        if ($result) {
+            return $result;
+        }
+        return [];
+    }
+
+
 
 }

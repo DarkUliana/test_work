@@ -5,7 +5,7 @@
 
 </div>
 
-<?php if($msg): ?>
+<?php if(!empty($msg)): ?>
     <div class="row">
         <div class="col-md-6 col-md-offset-3">
             <?php if ($msg == '1') : ?>
@@ -32,7 +32,7 @@
                     <tr>
                         <td><?= $value['product'] ?></td>
                         <td><?= $value['sum'] ?></td>
-                        <td><?= $value['warehouses'] ?></td>
+                        <td><?= $value['wh'] ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>

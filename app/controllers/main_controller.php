@@ -1,10 +1,13 @@
 <?php
 
 require_once DOC_ROOT . '/app/models/main_model.php';
+require_once DOC_ROOT . '/app/models/csv_model.php';
+
 
 class Main_Controller
 {
-    public $model;
+    public $mainModel;
+    public $csvModel;
     public $view;
     public $data;
 
@@ -13,12 +16,13 @@ class Main_Controller
     public function __construct()
     {
         $this->view = new View();
-        $this->model = new Main_Model();
+        $this->mainModel = new Main_Model();
+        $this->csvModel = new CSV_Model();
     }
 
     public function actionIndex()
     {
-        $this->data['products'] = $this->model->getData();
+        $this->data['products'] = $this->mainModel->getData();
         if (isset($_SESSION['msg'])) {
             $this->data['msg'] = $_SESSION['msg'];
             session_unset();
@@ -29,16 +33,22 @@ class Main_Controller
 
     public function actionUpload()
     {
-        $this->csv = $this->model->uploadFile();
+        $this->csv = $this->csvModel->uploadFile();
 
         if ($this->csv) {
-            $products = $this->model->parse($this->csv);
+            $products = $this->csvModel->parseCSV($this->csv);
 
-            if ($products) {
-                $_SESSION['msg'] = $this->model->insertProducts($products);
+            if (is_array($products)) {
+                $_SESSION['msg'] = $this->mainModel->insertProducts($products);
 
             } else {
-                $_SESSION['msg'] = 'Ошибка разбора файла';
+
+                if (is_string($products)) {
+                    $_SESSION['msg'] = $products;
+                } else {
+                    $_SESSION['msg'] = 'Ошибка разбора файла';
+                }
+
             }
         } else {
             $_SESSION['msg'] = 'Ошибка загрузки файла';

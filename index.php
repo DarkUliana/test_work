@@ -2,6 +2,7 @@
 
 ini_set('display_errors', 1);
 
+
 define('DOC_ROOT', __DIR__);
 define('CSV_ROOT', __DIR__ . '/files');
 
