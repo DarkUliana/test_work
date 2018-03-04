@@ -3,8 +3,7 @@
 
 class Insert_Str_Helper
 {
-
-    public function whereWarehousesStr($array, $column)
+    public function warehousesUnique($array, $column)
     {
         $warehouses = [];
 
@@ -13,11 +12,17 @@ class Insert_Str_Helper
         }
         $warehouses = array_unique($warehouses);
 
-        $where = "WHERE ";
-        for ($i = 0; $i < count($warehouses); $i++) {
-            $where .= "$column = '{$array[$i][$column]}'";
+        return $warehouses;
+    }
 
-            if($i < count($warehouses)-1) {
+    public function whereWarehousesStr($array, $column)
+    {
+
+        $where = "WHERE ";
+        for ($i = 0; $i < count($array); $i++) {
+            $where .= "$column = '{$array[$i]}'";
+
+            if ($i < count($array) - 1) {
                 $where .= " OR ";
             }
         }

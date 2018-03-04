@@ -38,16 +38,30 @@ class Main_Model
         }
         $helper = new Insert_Str_Helper();
 
-        $where = $helper->whereWarehousesStr($data, "warehouse");
+        $insertWarehouses = $helper->warehousesUnique($data, "warehouse");
+        $this->insertWarehouses($insertWarehouses);
+
+        $where = $helper->whereWarehousesStr($insertWarehouses, "warehouse");
         $whId = $this->selectWarehouseIdByName($where);
         $newData = $helper->changeWarehouseNameToId($data, $whId);
-//    var_dump($newData); die();
+
         foreach ($newData as $value) {
-            $query = "UPDATE $this->productsTable 
-                      SET quantity = quantity+{$value['quantity']}
-                      WHERE product = '{$value['product']}' AND warehouse_id = {$value['warehouse_id']}";
-            $this->connection->run($query);
+
+            $whereForOne = "WHERE product = '{$value['product']}' AND warehouse_id = {$value['warehouse_id']}";
+            $existQuery = "SELECT * FROM $this->productsTable $whereForOne";
+            $ifExist = $this->connection->run($existQuery);
+            if ($ifExist) {
+                $query = "UPDATE $this->productsTable 
+                          SET quantity = quantity+{$value['quantity']} 
+                          $whereForOne";
+            } else {
+                $query = "INSERT INTO $this->productsTable
+                          (product, quantity, warehouse_id)
+                          VALUES ('{$value['product']}', {$value['quantity']}, {$value['warehouse_id']})";
+            }
 //            var_dump($query); die();
+            $this->connection->run($query);
+
         }
 
         return 1;
@@ -64,6 +78,16 @@ class Main_Model
         return [];
     }
 
+    public function insertWarehouses($warehouses)
+    {
+        $warehousesStr = "('" . implode("'),('", $warehouses) . "')";
+
+        $query = "INSERT IGNORE INTO $this->warehosesTable
+                  (warehouse) VALUES $warehousesStr ";
+//        var_dump($query); die();
+
+        $this->connection->run($query);
+    }
 
 
 }
